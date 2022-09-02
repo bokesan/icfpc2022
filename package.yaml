@@ -8,7 +8,6 @@ copyright:           "2022 Author name here"
 
 extra-source-files:
 - README.md
-- CHANGELOG.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -58,3 +57,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - icfpc2022
+    - tasty
+    - tasty-hunit
+    - tasty-quickcheck
