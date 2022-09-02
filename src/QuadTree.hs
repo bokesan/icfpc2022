@@ -7,7 +7,6 @@ import Types
 
 data QuadTree = Node {
                   nodeColor :: !RGBA,
-                  nodeError :: !Float,
                   nodeX0, nodeY0, nodeX1, nodeY1 :: !Int,
                   subNodes :: Split
                 }
@@ -78,9 +77,9 @@ create maxError image = go 0 0 w h
     w = imageWidth image
     h = imageHeight image
     go x0 y0 x1 y1 = let average = averageColor image x0 y0 x1 y1
-                         err = totalError average image x0 y0 x1 y1
+                         err = totalError average image x0 y0 x1 y1 / log (fromIntegral (min w h))
                      in
-                         Node { nodeColor = average, nodeError = realToFrac err,
+                         Node { nodeColor = average,
                                 nodeX0 = x0, nodeY0 = y0,
                                 nodeX1 = x1, nodeY1 = y1,
                                 subNodes =

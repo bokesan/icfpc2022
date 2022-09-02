@@ -38,12 +38,12 @@ optimize img = do
   where
     goUp (err,score) = do  let next = up err
                            (_,cost,siml) <- solveWith next img
-                           if cost + siml < score
+                           if cost + siml <= score
                             then goUp (next, cost + siml)
                             else goDown (err, score)
     goDown (err,score) = do let next = down err
                             (_,cost,siml) <- solveWith next img
-                            if cost + siml < score
+                            if cost + siml <= score
                              then goDown (next, cost + siml)
                              else return err
 
