@@ -7,9 +7,8 @@ import System.Environment
 import qualified QuadTree
 import ImageUtils (pixelDistance)
 
-maxError :: Double
-maxError = -- 250000.0
-           50000.0
+startingMaxError :: Double
+startingMaxError = 100000
            
 main :: IO ()
 main = do args <- getArgs
@@ -21,8 +20,40 @@ solveProblem path = do img' <- readImage path
                          Left err -> putStrLn (path ++ ": error: " ++ err)
                          Right img -> writeSolution path (convertRGBA8 img)
 
+
+solveWith :: Double -> Image PixelRGBA8 -> IO (QuadTree.QuadTree, Int, Int)
+solveWith maxError img = do
+  let tree = QuadTree.create maxError img
+  let cost = QuadTree.cost (canvasSize img) tree
+  let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
+  putStrLn ("  maxError " ++ show maxError ++ ": cost=" ++ show cost
+            ++ ", similarity=" ++ show siml
+            ++ ", total=" ++ show (cost + siml))
+  return (tree, cost, siml)
+
+optimize :: Image PixelRGBA8 -> IO Double
+optimize img = do
+    (_,cost1,siml1) <- solveWith startingMaxError img
+    goUp (startingMaxError, cost1 + siml1)
+  where
+    goUp (err,score) = do  let next = up err
+                           (_,cost,siml) <- solveWith next img
+                           if cost + siml < score
+                            then goUp (next, cost + siml)
+                            else goDown (err, score)
+    goDown (err,score) = do let next = down err
+                            (_,cost,siml) <- solveWith next img
+                            if cost + siml < score
+                             then goDown (next, cost + siml)
+                             else return err
+
+up, down :: Double -> Double
+up x = x * 1.05
+down x = x * 0.97
+
 writeSolution :: String -> Image PixelRGBA8 -> IO ()
 writeSolution path img = do
+  maxError <- optimize img
   let tree = QuadTree.create maxError img
   let code = QuadTree.encode tree "0"
   let prog = concat $ intersperse "\n" (map show code)
