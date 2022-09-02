@@ -1,4 +1,4 @@
-module QuadTree (QuadTree, create, size, encode) where
+module QuadTree (QuadTree, create, size, encode, cost, createImage) where
 
 import Codec.Picture
 
@@ -41,6 +41,36 @@ encode node id1 = case subNodes node of
                                      ++ encode c (id1 ++ ".2")
                                      ++ encode d (id1 ++ ".3")
 
+cost :: Double -> QuadTree -> Int
+cost canvasSize node = case subNodes node of
+              None -> round (5.0 * canvasSize / blockSize node)
+              V a b -> round (7.0 * canvasSize / blockSize node)
+                       + cost canvasSize a + cost canvasSize b
+              H a b -> round (7.0 * canvasSize / blockSize node)
+                       + cost canvasSize a + cost canvasSize b
+              Quad a b c d -> round (10.0 * canvasSize / blockSize node)
+                              + cost canvasSize a + cost canvasSize b
+                              + cost canvasSize c + cost canvasSize d
+
+getColorBlocks :: QuadTree -> [(Int,Int,Int,Int,PixelRGBA8)]
+getColorBlocks node = case subNodes node of
+                        None -> [(nodeX0 node, nodeY0 node, nodeX1 node, nodeY1 node, nodeColor node)]
+                        V a b -> getColorBlocks a ++ getColorBlocks b
+                        H a b -> getColorBlocks a ++ getColorBlocks b
+                        Quad a b c d -> getColorBlocks a ++ getColorBlocks b
+                                        ++ getColorBlocks c ++ getColorBlocks d
+
+createImage :: Int -> Int -> QuadTree -> Image PixelRGBA8
+createImage w h tree = generateImage f w h
+  where
+    blocks = getColorBlocks tree
+    f x y' = let y = (h - (y' + 1)) in
+             case [ c | (x0,y0,x1,y1,c) <- blocks, x0 <= x && x < x1 && y0 <= y && y < y1 ] of
+               [] -> PixelRGBA8 255 255 255 255
+               (c : _) -> c
+
+blockSize :: QuadTree -> Double
+blockSize node = fromIntegral ((nodeX1 node - nodeX0 node) * (nodeY1 node - nodeY0 node))
 
 create :: Double -> Image PixelRGBA8 -> QuadTree
 create maxError image = go 0 0 w h

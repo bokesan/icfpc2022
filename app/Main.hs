@@ -5,10 +5,12 @@ import Data.List
 import System.Environment
 
 import qualified QuadTree
+import ImageUtils (pixelDistance)
 
 maxError :: Double
-maxError = 250000.0
-
+maxError = -- 250000.0
+           50000.0
+           
 main :: IO ()
 main = do args <- getArgs
           mapM_ solveProblem args
@@ -18,12 +20,6 @@ solveProblem path = do img' <- readImage path
                        case img' of
                          Left err -> putStrLn (path ++ ": error: " ++ err)
                          Right img -> writeSolution path (convertRGBA8 img)
-                         
-loadImage :: String -> IO ()
-loadImage path = do img' <- readImage path
-                    case img' of
-                      Left err -> putStrLn (path ++ ": error: " ++ err)
-                      Right img -> showInfo path (convertRGBA8 img)
 
 writeSolution :: String -> Image PixelRGBA8 -> IO ()
 writeSolution path img = do
@@ -31,22 +27,23 @@ writeSolution path img = do
   let code = QuadTree.encode tree "0"
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
-  
-showInfo :: String -> Image PixelRGBA8 -> IO ()
-showInfo path img = do
-  putStr path
-  putStr ": "
-  putStrLn (show w ++ "x" ++ show h)
-  showPixelAt 0 0
-  showPixelAt 0 (h - 1)
-  showPixelAt (w - 1) 0
-  showPixelAt (w - 1) (h - 1)
-  let tree = QuadTree.create maxError img
-  putStrLn ("  Size: " ++ show (w * h) ++ ", quadtree(" ++ show maxError ++ ") size: " ++ show
-             (QuadTree.size tree))
-  where
-    w = imageWidth img
-    h = imageHeight img
-    showPixelAt x y = let v = pixelAt img x y in
-                      putStrLn ("  [" ++ show x ++ "," ++ show y ++ "] = "
-                                ++ show v)
+  let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree
+  putStrLn (path ++ " cost: " ++ show (QuadTree.cost (canvasSize img) tree)
+             ++ ", similarity: " ++ show (similarity img img'))
+  writePng (path ++ ".out.png") img'
+
+canvasSize :: Image PixelRGBA8 -> Double
+canvasSize img = fromIntegral (imageWidth img * imageHeight img)
+
+similarity :: Image PixelRGBA8 -> Image PixelRGBA8 -> Int
+similarity a b = if w1 /= w2 || h1 /= h2
+                   then error "invalid result dimesions"
+                   else go 0 0 0.0
+   where
+      w1 = imageWidth a
+      w2 = imageWidth b
+      h1 = imageHeight a
+      h2 = imageHeight b
+      go x y diff | y == h1 = round (diff * 0.005)
+                  | x == w1 = go 0 (y + 1) diff
+                  | otherwise = go (x + 1) y (diff + pixelDistance (pixelAt a x y) (pixelAt b x y))
