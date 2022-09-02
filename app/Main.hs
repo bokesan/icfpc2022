@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Codec.Picture
-import Data.List
+import Data.List (intersperse)
 import System.Environment
 
 import qualified QuadTree

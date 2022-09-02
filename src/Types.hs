@@ -1,14 +1,15 @@
-module Types where
+module Types (
+          BlockId
+        , RGBA
+        , Orientation(..)
+        , Move(..)
+  ) where
 
 import Codec.Picture
-import Data.Word
 
 type BlockId = String
 
 type RGBA = PixelRGBA8
-
-makeColor :: Word8 -> Word8 -> Word8 -> Word8 -> RGBA
-makeColor = PixelRGBA8
 
 showRGBA :: RGBA -> String -> String
 showRGBA (PixelRGBA8 r g b a) = showChar '['
@@ -19,8 +20,6 @@ showRGBA (PixelRGBA8 r g b a) = showChar '['
 
 data Shape = Shape !Int !Int
            deriving (Eq, Ord, Show)
-
-type Canvas = Shape
 
 data Orientation = Vertical | Horizontal
                  deriving (Eq, Ord)
@@ -55,12 +54,4 @@ instance Show Move where
         
 showBlockId :: BlockId -> ShowS
 showBlockId id1 = showChar '[' . showString id1 . showChar ']' 
-
-baseCost :: Move -> Int
-baseCost (LineCut _ _ _)  =  7
-baseCost (PointCut _ _ _) = 10
-baseCost (Color _ _)      =  5
-baseCost (Swap _ _)       =  3
-baseCost (Merge _ _)      =  1
-
 
