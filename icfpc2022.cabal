@@ -24,6 +24,8 @@ source-repository head
 
 library
   exposed-modules:
+      ImageUtils
+      QuadTree
       Types
   other-modules:
       Paths_icfpc2022

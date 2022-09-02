@@ -42,7 +42,7 @@ data Move = LineCut BlockId !Orientation !Int
           | Swap BlockId BlockId
           | Merge BlockId BlockId
           deriving (Eq, Ord)
-          
+
 instance Show Move where
   showsPrec _ (LineCut id1 orientation offset) = showString "cut " . showBlockId id1 . showString " ["
                                                . shows orientation . showString "] ["
