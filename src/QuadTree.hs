@@ -1,4 +1,4 @@
-module QuadTree (QuadTree, create, size, encode, cost, createImage) where
+module QuadTree (QuadTree, create, encode, cost, createImage) where
 
 import Codec.Picture
 
@@ -7,40 +7,39 @@ import Types
 
 data QuadTree = Node {
                   nodeColor :: !RGBA,
-                  nodeX0, nodeY0, nodeX1, nodeY1 :: !Int,
+                  shape :: !Rectangle,
                   subNodes :: Split
                 }
-          deriving (Show)
+          deriving (Eq, Ord, Show)
 
 data Split = None
            | V QuadTree QuadTree
            | H QuadTree QuadTree
            | Quad QuadTree QuadTree QuadTree QuadTree
-           deriving (Show)
-
-size :: QuadTree -> Int
-size node = 1 + splitSize (subNodes node)
-
-splitSize :: Split -> Int
-splitSize None = 0
-splitSize (V a b) = size a + size b
-splitSize (H a b) = size a + size b
-splitSize (Quad a b c d) = size a + size b + size c + size d
+           deriving (Eq, Ord, Show)
 
 encode :: RGBA -> QuadTree -> BlockId -> [Move]
 encode topColor node id1 =
+                  let blk = Block id1 (shape node) in
                   case subNodes node of
                     None | nodeColor node == topColor -> []
-                         | otherwise -> [ Color id1 (nodeColor node) ]
-                    V a b -> LineCut id1 Vertical (nodeX0 b)
+                         | otherwise -> [ Color blk (nodeColor node) ]
+                    V a b -> LineCut blk Vertical (nodeX0 b)
                              : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
-                    H a b -> LineCut id1 Horizontal (nodeY0 b)
+                    H a b -> LineCut blk Horizontal (nodeY0 b)
                              : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
-                    Quad a b c d -> PointCut id1 (nodeX0 c) (nodeY0 c)
+                    Quad a b c d -> PointCut blk (nodeX0 c) (nodeY0 c)
                                      : encode topColor a (id1 ++ ".0")
                                      ++ encode topColor b (id1 ++ ".1")
                                      ++ encode topColor c (id1 ++ ".2")
                                      ++ encode topColor d (id1 ++ ".3")
+
+nodeX0, nodeY0 :: QuadTree -> Int
+nodeX0 node = case shape node of Rectangle x0 _ _ _ -> x0
+nodeY0 node = case shape node of Rectangle _ y0 _ _ -> y0
+
+blockSize :: QuadTree -> Double
+blockSize node = fromIntegral (size (shape node))
 
 cost :: Double -> QuadTree -> Int
 cost canvasSize node = case subNodes node of
@@ -53,9 +52,9 @@ cost canvasSize node = case subNodes node of
                               + cost canvasSize a + cost canvasSize b
                               + cost canvasSize c + cost canvasSize d
 
-getColorBlocks :: QuadTree -> [(Int,Int,Int,Int,PixelRGBA8)]
+getColorBlocks :: QuadTree -> [(Rectangle,PixelRGBA8)]
 getColorBlocks node = case subNodes node of
-                        None -> [(nodeX0 node, nodeY0 node, nodeX1 node, nodeY1 node, nodeColor node)]
+                        None -> [(shape node, nodeColor node)]
                         V a b -> getColorBlocks a ++ getColorBlocks b
                         H a b -> getColorBlocks a ++ getColorBlocks b
                         Quad a b c d -> getColorBlocks a ++ getColorBlocks b
@@ -66,12 +65,9 @@ createImage w h tree = generateImage f w h
   where
     blocks = getColorBlocks tree
     f x y' = let y = (h - (y' + 1)) in
-             case [ c | (x0,y0,x1,y1,c) <- blocks, x0 <= x && x < x1 && y0 <= y && y < y1 ] of
+             case [ c | (rect,c) <- blocks, contains rect x y ] of
                [] -> PixelRGBA8 255 255 255 255
                (c : _) -> c
-
-blockSize :: QuadTree -> Double
-blockSize node = fromIntegral ((nodeX1 node - nodeX0 node) * (nodeY1 node - nodeY0 node))
 
 create :: Double -> Image PixelRGBA8 -> QuadTree
 create maxError image = go 0 0 w h
@@ -82,8 +78,7 @@ create maxError image = go 0 0 w h
                          err = totalError average image x0 y0 x1 y1 / log (fromIntegral (min w h))
                      in
                          Node { nodeColor = average,
-                                nodeX0 = x0, nodeY0 = y0,
-                                nodeX1 = x1, nodeY1 = y1,
+                                shape = Rectangle x0 y0 x1 y1,
                                 subNodes =
                                   if err <= maxError then None
                                   else divide x0 y0 x1 y1 }
