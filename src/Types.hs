@@ -4,7 +4,7 @@ module Types (
         , Orientation(..)
         , Move(..)
         , moveCost
-        , Rectangle(..), contains, size
+        , Rectangle(..), contains, size, merge
   ) where
 
 import Codec.Picture
@@ -29,6 +29,18 @@ contains (Rectangle x0 y0 x1 y1) x y = x0 <= x && x < x1 && y0 <= y && y < y1
 
 size :: Rectangle -> Int
 size (Rectangle x0 y0 x1 y1) = (x1 - x0) * (y1 - y0)
+
+merge :: Rectangle -> Rectangle -> Maybe Rectangle
+merge a b = case combine2 a b of
+              Nothing -> combine2 b a
+              r -> r
+
+combine2 :: Rectangle -> Rectangle -> Maybe Rectangle
+combine2 (Rectangle x0 y0 x1 y1) (Rectangle x2 y2 x3 y3)
+  | (x0,y1, x1,y1) == (x2,y2, x3,y2) = Just (Rectangle x0 y0 x1 y3)
+  | (x1,y0, x1,y1) == (x2,y2, x2,y3) = Just (Rectangle x0 y0 x3 y3)
+  | otherwise = Nothing
+
 
 showRGBA :: RGBA -> String -> String
 showRGBA (PixelRGBA8 r g b a) = showChar '['
@@ -67,13 +79,6 @@ instance Show Move where
         
 showBlockId :: Block -> ShowS
 showBlockId (Block id1 _) = showChar '[' . showString id1 . showChar ']' 
-
-baseCost :: Move -> Int
-baseCost (LineCut _ _ _)  =  7
-baseCost (PointCut _ _ _) = 10
-baseCost (Color _ _)      =  5
-baseCost (Swap _ _)       =  3
-baseCost (Merge _ _)      =  1
 
 moveCost :: Int -> Move -> Int
 moveCost canvasSize (LineCut b _ _) = cost 7 canvasSize (blockSize b)

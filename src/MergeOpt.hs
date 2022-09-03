@@ -38,12 +38,4 @@ canMerge b1 b2 = case combine' b1 b2 of
                    _ -> True
 
 combine' :: Block -> Block -> Maybe Rectangle
-combine' (Block _ r1) (Block _ r2) = case combine2 r1 r2 ++ combine2 r2 r1 of
-                                       [] -> Nothing
-                                       (r:_) -> Just r
-
-combine2 :: Rectangle -> Rectangle -> [Rectangle]
-combine2 (Rectangle x0 y0 x1 y1) (Rectangle x2 y2 x3 y3)
-  | (x0,y1, x1,y1) == (x2,y2, x3,y2) = [Rectangle x0 y0 x1 y3]
-  | (x1,y0, x1,y1) == (x2,y2, x2,y3) = [Rectangle x0 y0 x3 y3]
-  | otherwise = []
+combine' (Block _ r1) (Block _ r2) = merge r1 r2

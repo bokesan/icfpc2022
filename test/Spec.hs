@@ -1,12 +1,15 @@
+{-# LANGUAGE OverloadedStrings #-}
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
 import Codec.Picture
+import Data.Aeson
 import Data.List
 import Data.Ord
 
 import Types
+import Configuration
 
 main = defaultMain tests
 
@@ -33,6 +36,9 @@ unitTests = testGroup "Unit tests"
   [
     testCase "mixColors" $
       mixColors (PixelRGBA8 20 40 60 80) (PixelRGBA8 10 20 30 6) @?= (PixelRGBA8 15 30 45 43)
+  , testCase "parse configuration" $
+      decode "{\"width\":24,\"height\":30,\"blocks\":[{\"blockId\":\"9\", \"bottomLeft\":[1,2],\"topRight\":[5,3],\"color\":[5,6,7,8]}]}"
+       @?= Just (Configuration { width = 24, height = 30, blocks = [ ConfBlock { blockId = "9", shape = Rectangle 1 2 5 3, color = PixelRGBA8 5 6 7 8 } ] })
   , testCase "format line cut" $
       show (LineCut (blk "1.0.2") Vertical 13) @?= "cut [1.0.2] [X] [13]"
   , testCase "format point cut" $
