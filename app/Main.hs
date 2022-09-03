@@ -1,14 +1,16 @@
 module Main (main) where
 
 import Codec.Picture
+import Control.Monad
 import Data.List (intersperse)
 import System.Environment
+import System.Random.Stateful
 
 import qualified QuadTree
 import ImageUtils (pixelDistance)
 
 startingMaxError :: Double
-startingMaxError = 100000
+startingMaxError = 2000000
            
 main :: IO ()
 main = do args <- getArgs
@@ -33,19 +35,12 @@ solveWith maxError img = do
 
 optimize :: Image PixelRGBA8 -> IO Double
 optimize img = do
-    (_,cost1,siml1) <- solveWith startingMaxError img
-    goUp (startingMaxError, cost1 + siml1)
-  where
-    goUp (err,score) = do  let next = up err
-                           (_,cost,siml) <- solveWith next img
-                           if cost + siml <= score
-                            then goUp (next, cost + siml)
-                            else goDown (err, score)
-    goDown (err,score) = do let next = down err
-                            (_,cost,siml) <- solveWith next img
-                            if cost + siml <= score
-                             then goDown (next, cost + siml)
-                             else return err
+    maxErrs <- replicateM 250 (uniformRM (0 :: Double, 600000 :: Double) globalStdGen)
+    res <- mapM (\m -> do (_,c,s) <- solveWith m img; return (c+s,m)) maxErrs
+    let (score, err) = minimum res
+    putStrLn ("Best err: " ++ show err ++ ", score " ++ show score)
+    return err
+
 
 up, down :: Double -> Double
 up x = x * 1.05
@@ -55,7 +50,7 @@ writeSolution :: String -> Image PixelRGBA8 -> IO ()
 writeSolution path img = do
   maxError <- optimize img
   let tree = QuadTree.create maxError img
-  let code = QuadTree.encode tree "0"
+  let code = QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
   let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree

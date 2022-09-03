@@ -9,4 +9,8 @@ Team: Sleep is your Superpower
 - Build quadtree
 - Quadtree -> ISL program
 
+## Improvements
+
+- Omit white color
+- Always Lift color moves out of leaves
 

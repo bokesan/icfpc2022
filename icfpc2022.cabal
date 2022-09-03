@@ -35,6 +35,7 @@ library
   build-depends:
       JuicyPixels
     , base >=4.7 && <5
+    , random
   default-language: Haskell2010
 
 executable icfpc2022-exe
@@ -48,6 +49,7 @@ executable icfpc2022-exe
       JuicyPixels
     , base >=4.7 && <5
     , icfpc2022
+    , random
   default-language: Haskell2010
 
 test-suite icfpc2022-test
@@ -62,6 +64,7 @@ test-suite icfpc2022-test
       JuicyPixels
     , base >=4.7 && <5
     , icfpc2022
+    , random
     , tasty
     , tasty-hunit
     , tasty-quickcheck

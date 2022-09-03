@@ -27,18 +27,20 @@ splitSize (V a b) = size a + size b
 splitSize (H a b) = size a + size b
 splitSize (Quad a b c d) = size a + size b + size c + size d
 
-encode :: QuadTree -> BlockId -> [Move]
-encode node id1 = case subNodes node of
-                    None -> [ Color id1 (nodeColor node) ]
+encode :: RGBA -> QuadTree -> BlockId -> [Move]
+encode topColor node id1 =
+                  case subNodes node of
+                    None | nodeColor node == topColor -> []
+                         | otherwise -> [ Color id1 (nodeColor node) ]
                     V a b -> LineCut id1 Vertical (nodeX0 b)
-                             : encode a (id1 ++ ".0") ++ encode b (id1 ++ ".1")
+                             : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
                     H a b -> LineCut id1 Horizontal (nodeY0 b)
-                             : encode a (id1 ++ ".0") ++ encode b (id1 ++ ".1")
+                             : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
                     Quad a b c d -> PointCut id1 (nodeX0 c) (nodeY0 c)
-                                     : encode a (id1 ++ ".0")
-                                     ++ encode b (id1 ++ ".1")
-                                     ++ encode c (id1 ++ ".2")
-                                     ++ encode d (id1 ++ ".3")
+                                     : encode topColor a (id1 ++ ".0")
+                                     ++ encode topColor b (id1 ++ ".1")
+                                     ++ encode topColor c (id1 ++ ".2")
+                                     ++ encode topColor d (id1 ++ ".3")
 
 cost :: Double -> QuadTree -> Int
 cost canvasSize node = case subNodes node of
