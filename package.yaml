@@ -47,6 +47,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - icfpc2022
+    - monad-parallel
 
 tests:
   icfpc2022-test:

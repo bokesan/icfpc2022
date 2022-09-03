@@ -2,6 +2,7 @@ module Main (main) where
 
 import Codec.Picture
 import Control.Monad
+import qualified Control.Monad.Parallel as PAR
 import Data.List (intersperse)
 import System.Environment
 import System.Random.Stateful
@@ -13,7 +14,7 @@ import qualified MergeOpt
 
 main :: IO ()
 main = do args <- getArgs
-          scores <- mapM solveProblem args
+          scores <- PAR.mapM solveProblem args
           putStrLn ("Total score: " ++ show (sum scores))
 
 solveProblem :: String -> IO Int
@@ -39,7 +40,7 @@ solveWith maxError img = do
 
 optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 optimize path img = do
-    maxErrs <- replicateM 20 (uniformRM (0.5 :: Double, 12 :: Double) globalStdGen)
+    maxErrs <- replicateM 100 (uniformRM (2 :: Double, 15 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) maxErrs
     let (score, err, tree) = minimum res
     putStrLn (path ++ ": best err=" ++ show err ++ ", score=" ++ show score)
