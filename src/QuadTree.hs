@@ -148,21 +148,52 @@ create3 targetCost img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight im
     divide rect@(Rectangle x0 y0 x2 y2)
       | x2 == x0 + 1 && y2 == y0 + 1 = []
       | otherwise =
-         lcutH rect (d2 y0 y2) ++
-         lcutH rect (d25 y0 y2) ++
-         lcutH rect (d35 y0 y2) ++
-         lcutV rect (d2 x0 x2) ++
-         lcutV rect (d25 x0 x2) ++
-         lcutV rect (d35 x0 x2) ++
-         pcut rect (d2 x0 x2) (d2 y0 y2) ++
-         pcut rect (d2 x0 x2) (d25 y0 y2) ++
-         pcut rect (d2 x0 x2) (d35 y0 y2) ++
-         pcut rect (d25 x0 x2) (d2 y0 y2) ++
-         pcut rect (d25 x0 x2) (d25 y0 y2) ++
-         pcut rect (d25 x0 x2) (d35 y0 y2) ++
-         pcut rect (d35 x0 x2) (d2 y0 y2) ++
-         pcut rect (d35 x0 x2) (d25 y0 y2) ++
-         pcut rect (d35 x0 x2) (d35 y0 y2)
+         let xo1 = d2  x0 x2
+             xo2 = d25 x0 x2
+             xo3 = d35 x0 x2
+             xo4 = d14 x0 x2
+             xo5 = d34 x0 x2
+             yo1 = d2  y0 y2
+             yo2 = d25 y0 y2
+             yo3 = d35 y0 y2
+             yo4 = d14 y0 y2
+             yo5 = d34 y0 y2
+         in
+         lcutH rect yo1 ++
+         lcutH rect yo2 ++
+         lcutH rect yo3 ++
+         lcutH rect yo4 ++
+         lcutH rect yo5 ++
+         lcutV rect xo1 ++
+         lcutV rect xo2 ++
+         lcutV rect xo3 ++
+         lcutV rect xo4 ++
+         lcutV rect xo5 ++
+         pcut rect xo1 yo1 ++
+         pcut rect xo1 yo2 ++
+         pcut rect xo1 yo3 ++
+         -- pcut rect xo1 yo4 ++
+         -- pcut rect xo1 yo5 ++
+         pcut rect xo2 yo1 ++
+         pcut rect xo2 yo2 ++
+         pcut rect xo2 yo3 ++
+         -- pcut rect xo2 yo4 ++
+         -- pcut rect xo2 yo5 ++
+         pcut rect xo3 yo1 ++
+         pcut rect xo3 yo2 ++
+         pcut rect xo3 yo3 ++
+         -- pcut rect xo3 yo4 ++
+         -- pcut rect xo3 yo5 ++
+         pcut rect xo4 yo1 ++
+         pcut rect xo4 yo2 ++
+         pcut rect xo4 yo3 ++
+         -- pcut rect xo4 yo4 ++
+         -- pcut rect xo4 yo5 ++
+         pcut rect xo5 yo1 ++
+         pcut rect xo5 yo2 ++
+         pcut rect xo5 yo3 -- ++
+         -- pcut rect xo5 yo4 ++
+         -- pcut rect xo5 yo5
     lcutH rect@(Rectangle x0 y0 x2 y2) y1
                | y1 == y0 = []
                | otherwise = let (c1,t1) = go (Rectangle x0 y0 x2 y1)
@@ -186,11 +217,20 @@ create3 targetCost img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight im
 d2 :: Int -> Int -> Int
 d2 a b = (a + b) `quot` 2
 
+d14 :: Int -> Int -> Int
+d14 a b = let dist = b - a
+              d = dist `quot` 4
+          in a + d
+
+d34 :: Int -> Int -> Int
+d34 a b = let dist = b - a
+              d = dist `quot` 4
+          in a + 3 * d
+          
 d25 :: Int -> Int -> Int
 d25 a b = let dist = b - a
               d = dist `quot` 5
           in a + 2 * d
-
 
 d35 :: Int -> Int -> Int
 d35 a b = let dist = b - a

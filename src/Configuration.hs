@@ -60,10 +60,10 @@ reduceBlocksToOne blks = go num blks
     reduce id1 (a:b:rest) = case merge (shape a) (shape b) of
                               Nothing -> let (bs,instr,id') = reduce id1 (b:rest) in
                                          (a : bs, instr, id')
-                              Just r -> let move = Merge (blk (blockId a)) (blk (blockId b))
+                              Just r -> let move = Merge (blk a) (blk b)
                                             newBlock = ConfBlock { blockId = show id1, shape = r, color = color a }
                                             (rest', instr', id'') = reduce (id1 + 1) rest
                                         in (newBlock : rest', move : instr', id'')
 
-blk :: String -> Block
-blk id1 = Block id1 (Rectangle 0 0 0 0)
+blk :: ConfBlock -> Block
+blk b = Block (blockId b) (shape b)

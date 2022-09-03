@@ -66,13 +66,16 @@ writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO Int
 writeSolution path initialConf img = do
   let (blocks', code1, id1) = reduceBlocksToOne (blocks initialConf)
   putStrLn ("flattened initial: " ++ show (id1, blocks'))
-  (cost, tree) <- Main.optimize path img
+  (_, tree) <- Main.optimize path img
   let code = code1 ++ MergeOpt.optimize img (QuadTree.encode (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
   let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree
   writePng (path ++ ".out.png") img'
-  return cost
+  let canvasSize = imageWidth img * imageHeight img
+  let cost = sum (map (moveCost canvasSize) code)
+  let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
+  return (cost + siml)
 
 similarity :: Image PixelRGBA8 -> Image PixelRGBA8 -> Int
 similarity a b = if w1 /= w2 || h1 /= h2
