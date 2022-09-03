@@ -13,4 +13,5 @@ Team: Sleep is your Superpower
 
 - Omit white color
 - Always Lift color moves out of leaves
+- Merge blocks before coloring to make it much cheaper
 

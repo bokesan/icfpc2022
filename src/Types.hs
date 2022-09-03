@@ -1,6 +1,6 @@
 module Types (
           Block(..), BlockId, Shape
-        , RGBA
+        , RGBA, mixColors
         , Orientation(..)
         , Move(..)
         , moveCost
@@ -8,11 +8,19 @@ module Types (
   ) where
 
 import Codec.Picture
+import Data.Word
 
 type BlockId = String
 
 type RGBA = PixelRGBA8
 
+mixColors :: RGBA -> RGBA -> RGBA
+mixColors (PixelRGBA8 a b c d) (PixelRGBA8 e f g h) =
+    PixelRGBA8 (m a e) (m b f) (m c g) (m d h)
+  where
+    m p q = let sum = ((fromIntegral p) :: Word16) + fromIntegral q
+            in fromIntegral (sum `quot` 2)
+            
 data Rectangle = Rectangle !Int !Int !Int !Int
                deriving (Eq, Ord, Show)
 

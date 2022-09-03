@@ -9,6 +9,7 @@ import System.Random.Stateful
 import Types
 import qualified QuadTree
 import ImageUtils (pixelDistance)
+import qualified MergeOpt
 
 main :: IO ()
 main = do args <- getArgs
@@ -26,7 +27,7 @@ solveProblem path = do img' <- readImage path
 solveWith :: Double -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 solveWith maxError img = do
   let tree = QuadTree.create3 maxError img
-  let code = QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
+  let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
@@ -38,7 +39,7 @@ solveWith maxError img = do
 
 optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 optimize path img = do
-    maxErrs <- replicateM 250 (uniformRM (50 :: Double, 800 :: Double) globalStdGen)
+    maxErrs <- replicateM 20 (uniformRM (0.5 :: Double, 12 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) maxErrs
     let (score, err, tree) = minimum res
     putStrLn (path ++ ": best err=" ++ show err ++ ", score=" ++ show score)
@@ -47,8 +48,8 @@ optimize path img = do
 
 writeSolution :: String -> Image PixelRGBA8 -> IO Int
 writeSolution path img = do
-  (cost, tree) <- optimize path img
-  let code = QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
+  (cost, tree) <- Main.optimize path img
+  let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
   let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree

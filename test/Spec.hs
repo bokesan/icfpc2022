@@ -2,6 +2,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
+import Codec.Picture
 import Data.List
 import Data.Ord
 
@@ -15,6 +16,7 @@ tests = testGroup "Tests" [properties, unitTests]
 properties :: TestTree
 properties = testGroup "Properties" [{- scProps, qcProps -}]
 
+makeColor = PixelRGBA8
 
 qcProps = testGroup "(checked by QuickCheck)"
   [ QC.testProperty "sort == sort . reverse" $
@@ -28,14 +30,17 @@ qcProps = testGroup "(checked by QuickCheck)"
   ]
 
 unitTests = testGroup "Unit tests"
-  [ testCase "format line cut" $
-      show (LineCut "1.0.2" Vertical 13) @?= "cut [1.0.2] [X] [13]"
+  [
+    testCase "mixColors" $
+      mixColors (PixelRGBA8 20 40 60 80) (PixelRGBA8 10 20 30 6) @?= (PixelRGBA8 15 30 45 43)
+  , testCase "format line cut" $
+      show (LineCut (Block "1.0.2" undefined) Vertical 13) @?= "cut [1.0.2] [X] [13]"
   , testCase "format point cut" $
-      show (PointCut "2.1" 12 15) @?= "cut [2.1] [12,15]"
+      show (PointCut (Block "2.1" undefined) 12 15) @?= "cut [2.1] [12,15]"
   , testCase "format color" $
-      show (Color "3" (makeColor 1 2 3 4)) @?= "color [3] [1,2,3,4]"
+      show (Color (Block "3" undefined) (makeColor 1 2 3 4)) @?= "color [3] [1,2,3,4]"
   , testCase "format swap" $
-      show (Swap "4.0" "2") @?= "swap [4.0] [2]"
+      show (Swap (Block "4.0" undefined) (Block "2" undefined)) @?= "swap [4.0] [2]"
   , testCase "format merge" $
-      show (Merge "4.1" "2.2") @?= "merge [4.1] [2.2]"
+      show (Merge (Block "4.1" undefined) (Block "2.2" undefined)) @?= "merge [4.1] [2.2]"
   ]
