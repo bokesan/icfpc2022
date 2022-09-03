@@ -8,14 +8,14 @@ import Types
 data QuadTree = Node {
                   nodeColor :: !RGBA,
                   shape :: !Rectangle,
-                  subNodes :: Split
+                  subNodes :: !Split
                 }
           deriving (Eq, Ord, Show)
 
 data Split = None
-           | V QuadTree QuadTree
-           | H QuadTree QuadTree
-           | Quad QuadTree QuadTree QuadTree QuadTree
+           | V !QuadTree !QuadTree
+           | H !QuadTree !QuadTree 
+           | Quad !QuadTree !QuadTree !QuadTree !QuadTree
            deriving (Eq, Ord, Show)
 
 encode :: RGBA -> QuadTree -> BlockId -> [Move]
