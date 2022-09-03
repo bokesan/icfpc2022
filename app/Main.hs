@@ -25,7 +25,7 @@ solveProblem path = do img' <- readImage path
 
 solveWith :: Double -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 solveWith maxError img = do
-  let tree = QuadTree.create maxError img
+  let tree = QuadTree.create3 maxError img
   let code = QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
@@ -38,7 +38,7 @@ solveWith maxError img = do
 
 optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 optimize path img = do
-    maxErrs <- replicateM 250 (uniformRM (0 :: Double, 600000 :: Double) globalStdGen)
+    maxErrs <- replicateM 250 (uniformRM (50 :: Double, 800 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) maxErrs
     let (score, err, tree) = minimum res
     putStrLn (path ++ ": best err=" ++ show err ++ ", score=" ++ show score)

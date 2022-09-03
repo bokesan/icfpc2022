@@ -1,4 +1,4 @@
-module QuadTree (QuadTree, create, encode, cost, createImage) where
+module QuadTree (QuadTree, create, create2, create3, encode, cost, createImage) where
 
 import Codec.Picture
 
@@ -98,3 +98,85 @@ create maxError image = go 0 0 w h
                   (go x1 y0 x2 y1)
                   (go x1 y1 x2 y2)
                   (go x0 y1 x1 y2)
+
+create2 :: Double -> Image PixelRGBA8 -> QuadTree
+create2 targetCost img = go (Rectangle 0 0 (imageWidth img) (imageHeight img))
+  where
+    canvasSize = fromIntegral (imageWidth img * imageHeight img)
+    go sh@(Rectangle x0 y0 x1 y1) =
+        let average = averageColor img x0 y0 x1 y1
+            siml = 0.005 * totalError average img x0 y0 x1 y1
+        in Node { nodeColor = average, shape = sh,
+                  subNodes = if shouldImprove siml sh then divide sh else None }
+    shouldImprove siml rect = siml > targetCost * canvasSize / fromIntegral (size rect)
+    divide rect@(Rectangle x0 y0 x2 y2)
+      | x2 == x0 + 1 && y2 == y0 + 1 = None
+      | x2 == x0 + 1 =
+         let y1 = (y0 + y2) `quot` 2 in
+         H (go (Rectangle x0 y0 x2 y1)) (go (Rectangle x0 y1 x2 y2))
+      | y2 == y0 + 1 =
+         let x1 = (x0 + x2) `quot` 2 in
+         V (go (Rectangle x0 y0 x1 y2)) (go (Rectangle x1 y0 x2 y2))
+      | otherwise =
+         let x1 = (x0 + x2) `quot` 2
+             y1 = (y0 + y2) `quot` 2
+         in
+             Quad (go (Rectangle x0 y0 x1 y1))
+                  (go (Rectangle x1 y0 x2 y1))
+                  (go (Rectangle x1 y1 x2 y2))
+                  (go (Rectangle x0 y1 x1 y2))
+
+
+create3 :: Double -> Image PixelRGBA8 -> QuadTree
+create3 targetCost img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight img)))
+  where
+    canvasSize = fromIntegral (imageWidth img * imageHeight img)
+    go :: Rectangle -> (Double, QuadTree)
+    go sh@(Rectangle x0 y0 x1 y1) =
+        let average = averageColor img x0 y0 x1 y1
+            siml = 0.005 * totalError average img x0 y0 x1 y1
+        in (siml, Node { nodeColor = average, shape = sh,
+                         subNodes = if shouldImprove siml sh then divide sh else None } )
+    shouldImprove siml rect = siml > targetCost * canvasSize / fromIntegral (size rect)
+    divide rect@(Rectangle x0 y0 x2 y2)
+      | x2 == x0 + 1 && y2 == y0 + 1 = None
+      | x2 == x0 + 1 =
+         let y1 = (y0 + y2) `quot` 2 in
+         H (snd $ go (Rectangle x0 y0 x2 y1)) (snd $ go (Rectangle x0 y1 x2 y2))
+      | y2 == y0 + 1 =
+         let x1 = (x0 + x2) `quot` 2 in
+         V (snd $ go (Rectangle x0 y0 x1 y2)) (snd $ go (Rectangle x1 y0 x2 y2))
+      | otherwise =
+         snd (minimum [pcut rect x1 y1 | (x1,y1) <- [(d2 x0 x2, d2 y0 y2),
+                                                     (d2 x0 x2, d25 y0 y2),
+                                                     (d25 x0 x2, d2 y0 y2),
+                                                     (d2 x0 x2, d35 y0 y2),
+                                                     (d35 x0 x2, d2 y0 y2),
+                                                     (d25 x0 x2, d25 y0 y2),
+                                                     (d35 x0 x2, d35 y0 y2),
+                                                     (d35 x0 x2, d25 y0 y2),
+                                                     (d25 x0 x2, d35 y0 y2)
+                                                    ]])
+
+    pcut rect@(Rectangle x0 y0 x2 y2) x1 y1
+               | x1 == x0 || y1 == y0 = (100000000, None)
+               | otherwise =
+                   let (c1, t1) = go (Rectangle x0 y0 x1 y1)
+                       (c2, t2) = go (Rectangle x1 y0 x2 y1)
+                       (c3, t3) = go (Rectangle x1 y1 x2 y2)
+                       (c4, t4) = go (Rectangle x0 y1 x1 y2)
+                    in (c1+c2+c3+c4 + 10 * canvasSize / fromIntegral (size rect), Quad t1 t2 t3 t4)
+
+d2 :: Int -> Int -> Int
+d2 a b = (a + b) `quot` 2
+
+d25 :: Int -> Int -> Int
+d25 a b = let dist = b - a
+              d = dist `quot` 5
+          in a + 2 * d
+
+
+d35 :: Int -> Int -> Int
+d35 a b = let dist = b - a
+              d = dist `quot` 5
+          in a + 3 * d
