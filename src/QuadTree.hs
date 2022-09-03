@@ -127,8 +127,8 @@ create2 targetCost img = go (Rectangle 0 0 (imageWidth img) (imageHeight img))
                   (go (Rectangle x0 y1 x1 y2))
 
 
-create3 :: Double -> Image PixelRGBA8 -> QuadTree
-create3 targetCost img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight img)))
+create3 :: Double -> Double -> Image PixelRGBA8 -> QuadTree
+create3 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight img)))
   where
     canvasSize = fromIntegral (imageWidth img * imageHeight img)
     go :: Rectangle -> (Double, QuadTree)
@@ -136,9 +136,9 @@ create3 targetCost img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight im
         let average = averageColor img x0 y0 x1 y1
             siml = 0.005 * totalError average img x0 y0 x1 y1
         in (siml, Node { nodeColor = average, shape = sh,
-                         subNodes = bestOf ( -- magic constant 6000 here
-                                             (if siml > 6000 then [] else [(5 * siml, None)])
-                                             ++ map (mapFst (targetCost *)) (divide sh)
+                         subNodes = bestOf ( 
+                                             (if siml > magic1 then [] else [(5 * siml, None)])
+                                             ++ map (mapFst (magic2 *)) (divide sh)
                                            )
                         } )
 

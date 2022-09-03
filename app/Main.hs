@@ -40,9 +40,9 @@ readInitialConfig pngPath = do
      else return lightningConfig
 
 
-solveWith :: Double -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
-solveWith maxError img = do
-  let tree = QuadTree.create3 maxError img
+solveWith :: (Double,Double) -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
+solveWith (magic1,magic2) img = do
+  let tree = QuadTree.create3 magic1 magic2 img
   let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
@@ -55,17 +55,18 @@ solveWith maxError img = do
 
 optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 optimize path img = do
-    maxErrs <- replicateM 100 (uniformRM (2 :: Double, 15 :: Double) globalStdGen)
-    res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) maxErrs
+    diffLimit <- replicateM 500 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
+    treeScale <- replicateM 500 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
+    res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) (zip diffLimit treeScale)
     let (score, err, tree) = minimum res
-    putStrLn (path ++ ": best err=" ++ show err ++ ", score=" ++ show score)
+    putStrLn (path ++ ": magic=" ++ show err ++ ", score=" ++ show score)
     return (score, tree)
 
 
 writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO Int
 writeSolution path initialConf img = do
   let (blocks', code1, id1) = reduceBlocksToOne (blocks initialConf)
-  putStrLn ("flattened initial: " ++ show (id1, blocks'))
+  -- putStrLn ("flattened initial: " ++ show (id1, blocks'))
   (_, tree) <- Main.optimize path img
   let code = code1 ++ MergeOpt.optimize img (QuadTree.encode (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
