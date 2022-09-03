@@ -3,6 +3,7 @@ module Main (main) where
 import Codec.Picture
 import Control.Monad
 import qualified Control.Monad.Parallel as PAR
+import Data.Aeson
 import Data.List (intersperse)
 import System.Environment
 import System.Random.Stateful
@@ -10,6 +11,7 @@ import System.Random.Stateful
 import Types
 import qualified QuadTree
 import ImageUtils (pixelDistance)
+import Configuration
 import qualified MergeOpt
 
 main :: IO ()
@@ -19,10 +21,19 @@ main = do args <- getArgs
 
 solveProblem :: String -> IO Int
 solveProblem path = do img' <- readImage path
+                       conf <- readInitialConfig path
                        case img' of
                          Left err ->  do putStrLn (path ++ ": error: " ++ err)
                                          return 10000000
-                         Right img -> writeSolution path (convertRGBA8 img)
+                         Right img -> writeSolution path conf (convertRGBA8 img)
+
+readInitialConfig :: String -> IO Configuration
+readInitialConfig pngPath = do
+    let path = take (length pngPath - 3) pngPath ++ "initial.json"
+    conf <- decodeFileStrict' path
+    case conf of
+      Nothing -> return lightningConfig
+      Just c  -> return c
 
 
 solveWith :: Double -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
@@ -47,10 +58,12 @@ optimize path img = do
     return (score, tree)
 
 
-writeSolution :: String -> Image PixelRGBA8 -> IO Int
-writeSolution path img = do
+writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO Int
+writeSolution path initialConf img = do
+  let (blocks', code1, id1) = reduceBlocksToOne (blocks initialConf)
+  putStrLn ("flattened initial: " ++ show (id1, blocks'))
   (cost, tree) <- Main.optimize path img
-  let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
+  let code = code1 ++ MergeOpt.optimize img (QuadTree.encode (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
   let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree

@@ -1,5 +1,5 @@
 module Types (
-          Block(..), BlockId, Shape
+          Block(..), BlockId, parseBlockId, Shape
         , RGBA, mixColors
         , Orientation(..)
         , Move(..)
@@ -11,6 +11,16 @@ import Codec.Picture
 import Data.Word
 
 type BlockId = String
+
+parseBlockId :: BlockId -> [Int]
+parseBlockId s = map read (splitAround '.' s)
+
+splitAround :: (Eq a) => a -> [a] -> [[a]]
+splitAround sep xs = case break (sep ==) xs of
+                       ([], []) -> []
+                       ([], tail) -> splitAround sep tail
+                       (init,[]) -> [init]
+                       (init,_:tail) -> init : splitAround sep tail
 
 type RGBA = PixelRGBA8
 

@@ -6,12 +6,23 @@ import ImageUtils
 import Types
 
 optimize :: Image PixelRGBA8 -> [Move] -> [Move]
-optimize img = go 1
+optimize img moves = go (maxMajorBlockNumber moves + 1) moves
   where
     go _   [] = []
     go blk ms@(m1:rest) = case opt2Colors img blk ms of
                             Nothing -> m1 : go blk rest
                             Just ms' -> go (blk + 1) ms'
+
+maxMajorBlockNumber :: [Move] -> Int
+maxMajorBlockNumber [] = 0
+maxMajorBlockNumber moves = maximum (map mmbn moves)
+  where
+    mbn (Block id1 _) = head (parseBlockId id1)
+    mmbn (Color b _) = mbn b
+    mmbn (Merge b1 b2) = max (mbn b1) (mbn b2)
+    mmbn (Swap b1 b2) = max (mbn b1) (mbn b2)
+    mmbn (LineCut b _ _) = mbn b
+    mmbn (PointCut b _ _) = mbn b
 
 
 opt2Colors :: Image PixelRGBA8 -> Int -> [Move] -> Maybe [Move]
