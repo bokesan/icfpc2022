@@ -49,6 +49,7 @@ executables:
     dependencies:
     - icfpc2022
     - monad-parallel
+    - directory
 
 tests:
   icfpc2022-test:

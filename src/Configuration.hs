@@ -46,7 +46,7 @@ lightningConfig = Configuration { width = 400, height = 400, blocks = [
                                                 color = PixelRGBA8 255 255 255 255 } ] }
 
 reduceBlocksToOne :: [ConfBlock] -> ([ConfBlock], [Move], Int)
-reduceBlocksToOne blks = go (num + 1) blks
+reduceBlocksToOne blks = go num blks
   where
     num = length blks
     go id1 []  = ([] , [], id1)

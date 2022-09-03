@@ -6,6 +6,7 @@ import qualified Control.Monad.Parallel as PAR
 import Data.Aeson
 import Data.List (intersperse)
 import System.Environment
+import System.Directory
 import System.Random.Stateful
 
 import Types
@@ -30,10 +31,13 @@ solveProblem path = do img' <- readImage path
 readInitialConfig :: String -> IO Configuration
 readInitialConfig pngPath = do
     let path = take (length pngPath - 3) pngPath ++ "initial.json"
-    conf <- decodeFileStrict' path
-    case conf of
-      Nothing -> return lightningConfig
-      Just c  -> return c
+    exists <- doesFileExist path
+    if exists
+     then do conf <- decodeFileStrict' path
+             case conf of
+               Nothing -> error "initial config json parse error"
+               Just c  -> return c
+     else return lightningConfig
 
 
 solveWith :: Double -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)

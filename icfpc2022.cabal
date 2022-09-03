@@ -52,6 +52,7 @@ executable icfpc2022-exe
       JuicyPixels
     , aeson
     , base >=4.7 && <5
+    , directory
     , icfpc2022
     , monad-parallel
     , random
