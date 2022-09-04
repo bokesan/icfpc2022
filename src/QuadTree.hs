@@ -1,4 +1,4 @@
-module QuadTree (QuadTree, create, create2, create3, encode, cost, createImage) where
+module QuadTree (QuadTree, create4, encode, cost, createImage) where
 
 import Codec.Picture
 
@@ -104,8 +104,8 @@ create2 targetCost img = go (Rectangle 0 0 (imageWidth img) (imageHeight img))
   where
     canvasSize = fromIntegral (imageWidth img * imageHeight img)
     go sh@(Rectangle x0 y0 x1 y1) =
-        let average = averageColor img x0 y0 x1 y1
-            siml = 0.005 * totalError average img x0 y0 x1 y1
+        let average = averageColor' img sh
+            siml = 0.005 * totalError' average img sh
         in Node { nodeColor = average, shape = sh,
                   subNodes = if shouldImprove siml sh then divide sh else None }
     shouldImprove siml rect = siml > targetCost * canvasSize / fromIntegral (size rect)
@@ -133,8 +133,8 @@ create3 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight
     canvasSize = fromIntegral (imageWidth img * imageHeight img)
     go :: Rectangle -> (Double, QuadTree)
     go sh@(Rectangle x0 y0 x1 y1) =
-        let average = averageColor img x0 y0 x1 y1
-            siml = 0.005 * totalError average img x0 y0 x1 y1
+        let average = averageColor' img sh
+            siml = 0.005 * totalError' average img sh
         in (siml, Node { nodeColor = average, shape = sh,
                          subNodes = bestOf ( 
                                              (if siml > magic1 then [] else [(5 * siml, None)])
@@ -213,7 +213,57 @@ create3 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight
                        (c4, t4) = go (Rectangle x0 y1 x1 y2)
                     in [(c1+c2+c3+c4 + 10 * sizeFactor rect, Quad t1 t2 t3 t4)]
     sizeFactor r = canvasSize / fromIntegral (size r)
-    
+
+create4 :: Double -> Double -> Image PixelRGBA8 -> QuadTree
+create4 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight img)))
+  where
+    canvasSize = fromIntegral (imageWidth img * imageHeight img)
+    go :: Rectangle -> (Double, QuadTree)
+    go sh@(Rectangle x0 y0 x1 y1) =
+        let average = averageColor' img sh
+            siml = 0.005 * totalError' average img sh
+        in (siml, Node { nodeColor = average, shape = sh,
+                         subNodes = bestOf ( 
+                                             (if siml > magic1 then [] else [(5 * siml, None)])
+                                             ++ map (mapFst (magic2 *)) (divide sh average siml)
+                                           )
+                        } )
+    bestOf :: [(Double, Split)] -> Split
+    bestOf [] = None
+    bestOf xs = snd (minimum xs)
+    divide :: Rectangle -> RGBA -> Double -> [(Double, Split)]
+    divide rect@(Rectangle x0 y0 x2 y2) average siml
+      | x2 == x0 + 1 && y2 == y0 + 1 = []
+      | otherwise =
+         ( case bestHcut img canvasSize rect average siml of
+             Nothing -> []
+             Just y  -> lcutH rect y ) ++
+         ( case bestVcut img canvasSize rect average siml of
+             Nothing -> []
+             Just x  -> lcutV rect x ) ++
+         ( case bestPcut img canvasSize rect average siml of
+             Nothing -> []
+             Just (x,y) -> pcut rect x y )
+    lcutH rect@(Rectangle x0 y0 x2 y2) y1
+               | y1 == y0 = []
+               | otherwise = let (c1,t1) = go (Rectangle x0 y0 x2 y1)
+                                 (c2,t2) = go (Rectangle x0 y1 x2 y2)
+                             in [(c1+c2 + 7 * sizeFactor rect, H t1 t2)]
+    lcutV rect@(Rectangle x0 y0 x2 y2) x1
+               | x1 == x0 = []
+               | otherwise = let (c1,t1) = go (Rectangle x0 y0 x1 y2)
+                                 (c2,t2) = go (Rectangle x1 y0 x2 y2)
+                             in [(c1+c2 + 7 * sizeFactor rect, V t1 t2)]
+    pcut rect@(Rectangle x0 y0 x2 y2) x1 y1
+               | x1 == x0 || y1 == y0 = []
+               | otherwise =
+                   let (c1, t1) = go (Rectangle x0 y0 x1 y1)
+                       (c2, t2) = go (Rectangle x1 y0 x2 y1)
+                       (c3, t3) = go (Rectangle x1 y1 x2 y2)
+                       (c4, t4) = go (Rectangle x0 y1 x1 y2)
+                    in [(c1+c2+c3+c4 + 10 * sizeFactor rect, Quad t1 t2 t3 t4)]
+    sizeFactor r = canvasSize / fromIntegral (size r)
+
 d2 :: Int -> Int -> Int
 d2 a b = (a + b) `quot` 2
 
@@ -239,3 +289,71 @@ d35 a b = let dist = b - a
 
 mapFst :: (a -> b) -> (a, c) -> (b, c)
 mapFst f (a,b) = (f a, b)
+
+stepSize :: Int -> Int
+stepSize n = max 1 (n `quot` 32)
+
+bestVcut :: Image PixelRGBA8 -> Double -> Rectangle -> RGBA -> Double -> Maybe Int
+bestVcut img canvasSize rect@(Rectangle x0 y0 x1 y1) averageColor diff =
+    case costs of
+      [] -> Nothing
+      cs -> case minimum cs of
+              (cost, x) | cost <= diff -> Just x
+                        | otherwise -> Nothing
+  where
+    step = stepSize (x1 - x0)
+    candidateXs = [x0 + step, x0 + 2*step .. x1 - 2]
+    costs :: [(Double, Int)]
+    costs = [(calc x, x) | x <- candidateXs]
+    calc x = let (r1,r2) = splitV rect x
+                 diff1 = 0.005 * totalError'' img r1
+                 diff2 = 0.005 * totalError'' img r2
+                 cutCost = 7 * sizeFactor rect
+              in
+                 cutCost + diff1 + diff2
+    sizeFactor r = canvasSize / fromIntegral (size r)
+
+
+bestHcut :: Image PixelRGBA8 -> Double -> Rectangle -> RGBA -> Double -> Maybe Int
+bestHcut img canvasSize rect@(Rectangle x0 y0 x1 y1) averageColor diff =
+    case costs of
+      [] -> Nothing
+      cs -> case minimum cs of
+              (cost, y) | cost <= diff -> Just y
+                        | otherwise -> Nothing
+  where
+    step = stepSize (y1 - y0)
+    candidateYs = [y0 + step, y0 + 2*step .. y1 - 2]
+    costs :: [(Double, Int)]
+    costs = [(calc y, y) | y <- candidateYs]
+    calc y = let (r1,r2) = splitH rect y
+                 diff1 = 0.005 * totalError'' img r1
+                 diff2 = 0.005 * totalError'' img r2
+                 cutCost = 7 * sizeFactor rect
+              in
+                 cutCost + diff1 + diff2
+    sizeFactor r = canvasSize / fromIntegral (size r)
+
+bestPcut :: Image PixelRGBA8 -> Double -> Rectangle -> RGBA -> Double -> Maybe (Int,Int)
+bestPcut img canvasSize rect@(Rectangle x0 y0 x1 y1) averageColor diff =
+    case costs of
+      [] -> Nothing
+      cs -> case minimum cs of
+              (cost, xy) | cost <= diff -> Just xy
+                         | otherwise -> Nothing
+  where
+    xstep = stepSize (x1 - x0)
+    ystep = stepSize (y1 - y0)
+    candidateXYs = [(x,y) | x <- [x0 + xstep, x0 + 2*xstep .. x1 - 2],
+                            y <- [y0 + ystep, y0 + 2*ystep .. y1 - 2]]
+    costs :: [(Double, (Int,Int))]
+    costs = [(calc xy, xy) | xy <- candidateXYs]
+    calc xy = let (r1,r2,r3,r4) = splitP rect xy
+                  diff1 = 0.005 * totalError'' img r1
+                  diff2 = 0.005 * totalError'' img r2
+                  diff3 = 0.005 * totalError'' img r3
+                  diff4 = 0.005 * totalError'' img r4
+                  cutCost = 10 * sizeFactor rect
+              in
+                  cutCost + diff1 + diff2 + diff3 + diff4
+    sizeFactor r = canvasSize / fromIntegral (size r)

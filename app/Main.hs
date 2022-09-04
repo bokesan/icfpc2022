@@ -42,7 +42,7 @@ readInitialConfig pngPath = do
 
 solveWith :: (Double,Double) -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 solveWith (magic1,magic2) img = do
-  let tree = QuadTree.create3 magic1 magic2 img
+  let tree = QuadTree.create4 magic1 magic2 img
   let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
@@ -55,18 +55,19 @@ solveWith (magic1,magic2) img = do
 
 optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 optimize path img = do
-    diffLimit <- replicateM 500 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
-    treeScale <- replicateM 500 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
+    -- diffLimit <- replicateM 200 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
+    -- treeScale <- replicateM 200 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
+    diffLimit <- replicateM 20 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
+    treeScale <- replicateM 20 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) (zip diffLimit treeScale)
     let (score, err, tree) = minimum res
-    putStrLn (path ++ ": magic=" ++ show err ++ ", score=" ++ show score)
+    -- putStrLn (path ++ ": magic=" ++ show err ++ ", score=" ++ show score)
     return (score, tree)
 
 
 writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO Int
 writeSolution path initialConf img = do
   let (blocks', code1, id1) = reduceBlocksToOne (blocks initialConf)
-  -- putStrLn ("flattened initial: " ++ show (id1, blocks'))
   (_, tree) <- Main.optimize path img
   let code = code1 ++ MergeOpt.optimize img (QuadTree.encode (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
@@ -76,6 +77,7 @@ writeSolution path initialConf img = do
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
+  putStrLn (path ++ ": score=" ++ show (cost + siml))
   return (cost + siml)
 
 similarity :: Image PixelRGBA8 -> Image PixelRGBA8 -> Int
