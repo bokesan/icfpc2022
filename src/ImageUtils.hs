@@ -1,7 +1,9 @@
-module ImageUtils (getPixel, pixelDistance, averageColor, totalError) where
+module ImageUtils (getPixel, pixelDistance, averageColor, averageColor', totalError, totalError') where
 
 import Codec.Picture
 import Data.Word
+
+import Types
 
 getPixel :: Image PixelRGBA8 -> Int -> Int -> PixelRGBA8
 getPixel img x y = pixelAt img x (imageHeight img - (y + 1))
@@ -30,6 +32,9 @@ rowChannelSums img y x0 x1 sums = go baseIndex sums
     go i s | i == endIndex = s
            | otherwise     = go (i + 4) (addPixel (unsafePixelAt dat i) s)
 
+averageColor' :: Image PixelRGBA8 -> Rectangle -> PixelRGBA8
+averageColor' image (Rectangle x0 y0 x1 y1) = averageColor image x0 y0 x1 y1
+
 averageColor :: Image PixelRGBA8 -> Int -> Int -> Int -> Int -> PixelRGBA8
 averageColor image x0 y0 x1 y1 = go y0 (Sums 0 0 0 0)
   where
@@ -44,6 +49,9 @@ averageColor image x0 y0 x1 y1 = go y0 (Sums 0 0 0 0)
                                    (fromIntegral (a `quot` n))
                    | otherwise =
                         go (y + 1) (rowChannelSums image y x0 x1 s)
+
+totalError' :: PixelRGBA8 -> Image PixelRGBA8 -> Rectangle -> Double
+totalError' color image (Rectangle x0 y0 x1 y1) = totalError color image x0 y0 x1 y1
 
 totalError :: PixelRGBA8 -> Image PixelRGBA8 -> Int -> Int -> Int -> Int -> Double
 totalError color image x0 y0 x1 y1 = go y0 0.0

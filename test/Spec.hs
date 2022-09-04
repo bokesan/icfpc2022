@@ -38,6 +38,13 @@ unitTests = testGroup "Unit tests"
       mixColors (PixelRGBA8 20 40 60 80) (PixelRGBA8 10 20 30 6) @?= (PixelRGBA8 15 30 45 43)
   , testCase "parse blockId" $
       parseBlockId "12.34.56" @?= [12, 34, 56]
+  , testCase "splitV" $
+      splitV (Rectangle 0 0 10 10) 5 @?= (Rectangle 0 0 5 10, Rectangle 5 0 10 10)
+  , testCase "splitH" $
+      splitH (Rectangle 0 0 10 10) 4 @?= (Rectangle 0 0 10 4, Rectangle 0 4 10 10)
+  , testCase "splitP" $
+      splitP (Rectangle 0 0 4 4) (2,2) @?= ( Rectangle 0 0 2 2, Rectangle 2 0 4 2,
+                                             Rectangle 2 2 4 4, Rectangle 0 2 2 4 )
   , testCase "parse configuration" $
       decode "{\"width\":400,\"height\":400,\"blocks\":[{\"blockId\":\"0\", \"bottomLeft\":[0,0],\"topRight\":[400,400],\"color\":[255,255,255,255]}]}"
        @?= Just lightningConfig

@@ -4,7 +4,7 @@ module Types (
         , Orientation(..)
         , Move(..)
         , moveCost
-        , Rectangle(..), contains, size, merge
+        , Rectangle(..), contains, size, merge, splitV, splitH, splitP
   ) where
 
 import Codec.Picture
@@ -51,6 +51,20 @@ combine2 (Rectangle x0 y0 x1 y1) (Rectangle x2 y2 x3 y3)
   | (x1,y0, x1,y1) == (x2,y2, x2,y3) = Just (Rectangle x0 y0 x3 y3)
   | otherwise = Nothing
 
+splitV, splitH :: Rectangle -> Int -> (Rectangle, Rectangle)
+splitV (Rectangle x0 y0 x1 y1) x = (mkRect x0 y0 x y1, mkRect x y0 x1 y1)
+splitH (Rectangle x0 y0 x1 y1) y = (mkRect x0 y0 x1 y, mkRect x0 y x1 y1)
+
+splitP :: Rectangle -> (Int,Int) -> (Rectangle, Rectangle, Rectangle, Rectangle)
+splitP (Rectangle x0 y0 x1 y1) (x,y) = ( mkRect x0 y0 x  y ,
+                                         mkRect x  y0 x1 y ,
+                                         mkRect x  y  x1 y1,
+                                         mkRect x0 y  x  y1 )
+
+mkRect :: Int -> Int -> Int -> Int -> Rectangle
+mkRect x0 y0 x1 y1 | x0 < x1 && y0 < y1 = Rectangle x0 y0 x1 y1
+                   | otherwise = error ("empty rectangle: " ++ show (x0,y0,x1,y1))
+                                    
 
 showRGBA :: RGBA -> String -> String
 showRGBA (PixelRGBA8 r g b a) = showChar '['
