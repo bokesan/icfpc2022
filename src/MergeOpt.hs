@@ -1,4 +1,4 @@
-module MergeOpt (optimize) where
+module MergeOpt (optimize, optimize') where
 
 import Codec.Picture
 
@@ -12,6 +12,14 @@ optimize img moves = go (maxMajorBlockNumber moves + 1) moves
     go blk ms@(m1:rest) = case opt2Colors img blk ms of
                             Nothing -> m1 : go blk rest
                             Just ms' -> go (blk + 1) ms'
+
+-- FIXME: using this results in errors
+optimize' :: Image PixelRGBA8 -> [Move] -> [Move]
+optimize' img moves = go (maxMajorBlockNumber moves + 1) moves
+  where
+    go blk ms = case opt2colors2 img blk ms of
+                  Nothing -> ms
+                  Just ms' -> go (blk + 1) ms'
 
 maxMajorBlockNumber :: [Move] -> Int
 maxMajorBlockNumber [] = 0
@@ -40,7 +48,7 @@ opt2Colors img num (m1@(Color b1 c1) : m2@(Color b2 c2) : ms)
 opt2Colors _ _ _ = Nothing
 
 diffCost :: Image PixelRGBA8 -> Move -> Double
-diffCost img (Color (Block _ (Rectangle x0 y0 x1 y1)) c) = 0.005 * totalError c img x0 y0 x1 y1
+diffCost img (Color (Block _ shape) c) = 0.005 * totalError' c img shape
 diffCost _ _ = 0
 
 canMerge :: Block -> Block -> Bool
@@ -50,3 +58,34 @@ canMerge b1 b2 = case combine' b1 b2 of
 
 combine' :: Block -> Block -> Maybe Rectangle
 combine' (Block _ r1) (Block _ r2) = merge r1 r2
+
+isColorMove :: Move -> Bool
+isColorMove (Color _ _) = True
+isColorMove _ = False
+
+opt2colors2 :: Image PixelRGBA8 -> Int -> [Move] -> Maybe [Move]
+opt2colors2 img num moves = findFirst [] moves
+  where
+    findFirst init moves = case break isColorMove moves of
+                              (_,[]) -> Nothing
+                              (init', cm:ms) -> case findSecond cm ms of
+                                                  Nothing -> findFirst (init ++ init' ++ [cm]) ms
+                                                  Just (a,cm2,b) -> Just (init ++ init' ++ a ++ combineColors cm cm2 ++ b)
+    findSecond cm moves = case break (isCompatibleColor cm) moves of
+                            (_,[]) -> Nothing
+                            (init,cm2:ms) -> Just (init,cm2,ms)
+    isCompatibleColor m1@(Color b1 c1) m2@(Color b2 c2) =
+                      canMerge b1 b2 && mc m1 + mc m2 + diffCost img m1 + diffCost img m2 >
+                                        mc m1' + mc m2' + diffCost img m2'
+       where
+         (Just newRect) = combine' b1 b2
+         newBlk = Block (show num) newRect
+         m1' = Merge b1 b2
+         m2' = Color newBlk (mixColors c1 c2)
+    isCompatibleColor _ _ = False
+
+    canvas = imageWidth img * imageHeight img
+    mc = fromIntegral . moveCost canvas
+    combineColors (Color b1 c1) (Color b2 c2) = let (Just newRect) = combine' b1 b2
+                                                    newBlk = Block (show num) newRect
+                                                in [Merge b1 b2, Color newBlk (mixColors c1 c2)]
