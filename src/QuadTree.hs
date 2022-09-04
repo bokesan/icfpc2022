@@ -291,7 +291,7 @@ mapFst :: (a -> b) -> (a, c) -> (b, c)
 mapFst f (a,b) = (f a, b)
 
 stepSize :: Int -> Int
-stepSize n = max 1 (n `quot` 32)
+stepSize n = max 1 (n `quot` 16)
 
 bestVcut :: Image PixelRGBA8 -> Double -> Rectangle -> RGBA -> Double -> Maybe Int
 bestVcut img canvasSize rect@(Rectangle x0 y0 x1 y1) averageColor diff =
