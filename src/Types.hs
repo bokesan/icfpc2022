@@ -5,6 +5,7 @@ module Types (
         , Orientation(..)
         , Move(..)
         , moveCost
+        , moveContainsBlock
         , Rectangle(..), contains, size, merge, splitV, splitH, splitP
         , roundJS
   ) where
@@ -91,6 +92,7 @@ instance Show Orientation where
   showsPrec _ Horizontal = showChar 'Y'
 
 data Block = Block !BlockId !Shape
+           deriving (Eq, Show)
 
            
 data Move = LineCut !Block !Orientation !Int
@@ -98,6 +100,7 @@ data Move = LineCut !Block !Orientation !Int
           | Color !Block !RGBA
           | Swap !Block !Block
           | Merge !Block !Block
+          deriving (Eq)
 
 instance Show Move where
   showsPrec _ (LineCut id1 orientation offset) = showString "cut " . showBlockId id1 . showString " ["
@@ -124,6 +127,15 @@ blockSize (Block _ s) = size s
 
 cost :: Int -> Int -> Int -> Int
 cost factor canvasSize blockSize = roundJS (fromIntegral factor * fromIntegral canvasSize / fromIntegral blockSize)
+
+moveContainsBlock :: Block -> Move -> Bool
+moveContainsBlock blk move =
+  case move of
+    LineCut b _ _  -> b == blk
+    PointCut b _ _ -> b == blk
+    Color b _      -> b == blk
+    Swap b1 b2     -> b1 == blk || b2 == blk
+    Merge b1 b2    -> b1 == blk || b2 == blk
 
 roundJS :: Double -> Int
 roundJS x = let f = floor x

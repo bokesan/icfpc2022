@@ -28,6 +28,7 @@ library
       Configuration
       ImageUtils
       MergeOpt
+      P1Solver
       QuadTree
       Types
   other-modules:

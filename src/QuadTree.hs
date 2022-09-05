@@ -275,7 +275,7 @@ create4 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight
     bestOf xs = snd (minimum xs)
     divide :: Rectangle -> RGBA -> Double -> [(Double, Split)]
     divide rect@(Rectangle x0 y0 x2 y2) average siml
-      | x2 == x0 + 1 && y2 == y0 + 1 = []
+      | size rect < 25 = []
       | otherwise =
          ( case bestHcut img canvasSize rect average siml of
              Nothing -> []

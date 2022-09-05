@@ -11,6 +11,7 @@ import System.Random.Stateful
 
 import Types
 import qualified QuadTree
+import qualified P1Solver
 import BlockSwap
 import ImageUtils (similarity)
 import Configuration
@@ -20,6 +21,9 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             ("-similarity" : args') -> showSimilarity args'
+            ("-p1" : args') ->
+                 do scores <- PAR.mapM solveP1 args'
+                    putStrLn ("Total score: " ++ show (sum scores))
             ("-blockSwap" : args') ->
                  do scores <- PAR.mapM solveWithBlockSwap args'
                     putStrLn ("Total score: " ++ show (sum scores))
@@ -40,6 +44,20 @@ showSimilarity [file1, file2] = do
     img2 <- readImage' file2
     putStrLn ("similarity: " ++ show (similarity img1 img2))
 showSimilarity _ = error "usage: prog -similarity image1 image2"
+
+cWHITE :: RGBA
+cWHITE = PixelRGBA8 255 255 255 255
+
+solveP1 :: String -> IO Int
+solveP1 path = do img <- readImage' path
+                  let moves = MergeOpt.optimize img (P1Solver.solve 50 img cWHITE "0")
+                  let canvasSize = imageWidth img * imageHeight img
+                  let cost = sum (map (moveCost canvasSize) moves)
+                  let id1 = show (problemId path)
+                  putStrLn (id1 ++ ": cost=" ++ show cost)
+                  let prog = concat $ intersperse "\n" (map show moves)
+                  writeFile (path ++ ".txt") prog
+                  return cost
 
 solveWithBlockSwap :: String -> IO Int
 solveWithBlockSwap path = do img  <- readImage' path
@@ -94,9 +112,9 @@ solveWith (magic1,magic2) img = do
 optimize :: Image PixelRGBA8 -> IO (Int, (Double, Double), QuadTree.QuadTree)
 optimize img = do
     -- observed: 3383 - 18105
-    diffLimit <- replicateM 50 (uniformRM (2000 :: Double, 21000 :: Double) globalStdGen)
-    -- observed: 5.99 - 21.77
-    treeScale <- replicateM 50 (uniformRM (5 :: Double, 30 :: Double) globalStdGen)
+    diffLimit <- replicateM 50 (uniformRM (2000 :: Double, 25000 :: Double) globalStdGen)
+    -- observed: 5.99 - 99
+    treeScale <- replicateM 50 (uniformRM (4.5 :: Double, 100 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) (zip diffLimit treeScale)
     return (minimum res)
 
@@ -114,3 +132,4 @@ writeSolution path initialConf img = do
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
   putStrLn (path ++ ": cost=" ++ show cost ++ ", similarity=" ++ show siml ++ ", score=" ++ show (cost + siml))
   return (cost + siml, magic)
+
