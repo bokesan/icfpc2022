@@ -39,7 +39,7 @@ library
       JuicyPixels
     , aeson
     , base >=4.7 && <5
-    , random
+    , containers
   default-language: Haskell2010
 
 executable icfpc2022-exe
@@ -53,6 +53,7 @@ executable icfpc2022-exe
       JuicyPixels
     , aeson
     , base >=4.7 && <5
+    , containers
     , directory
     , icfpc2022
     , monad-parallel
@@ -71,8 +72,8 @@ test-suite icfpc2022-test
       JuicyPixels
     , aeson
     , base >=4.7 && <5
+    , containers
     , icfpc2022
-    , random
     , tasty
     , tasty-hunit
     , tasty-quickcheck

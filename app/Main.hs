@@ -12,7 +12,7 @@ import System.Random.Stateful
 import Types
 import qualified QuadTree
 import BlockSwap
-import ImageUtils (pixelDistance, similarity)
+import ImageUtils (similarity)
 import Configuration
 import qualified MergeOpt
 
@@ -23,8 +23,16 @@ main = do args <- getArgs
             ("-blockSwap" : args') ->
                  do scores <- PAR.mapM solveWithBlockSwap args'
                     putStrLn ("Total score: " ++ show (sum scores))
-            _ -> do scores <- PAR.mapM solveProblem args
+            _ -> do results <- PAR.mapM solveProblem args
+                    let scores = map fst results
+                        magic = map snd results
                     putStrLn ("Total score: " ++ show (sum scores))
+                    putStrLn ("Magic1 " ++ showRange (map fst magic))
+                    putStrLn ("Magic2 " ++ showRange (map snd magic))
+
+showRange :: [Double] -> String
+showRange xs = show (minimum xs) ++ " - " ++ show (maximum xs)
+
 
 showSimilarity :: [String] -> IO ()
 showSimilarity [file1, file2] = do
@@ -57,13 +65,10 @@ readImage' path = do img' <- readImage path
                        Left err  -> error (path ++ ": error " ++ err)
                        Right img -> return (convertRGBA8 img)
 
-solveProblem :: String -> IO Int
-solveProblem path = do img' <- readImage path
+solveProblem :: String -> IO (Int, (Double, Double))
+solveProblem path = do img  <- readImage' path
                        conf <- readInitialConfig path
-                       case img' of
-                         Left err ->  do putStrLn (path ++ ": error: " ++ err)
-                                         return 10000000
-                         Right img -> writeSolution path conf (convertRGBA8 img)
+                       writeSolution path conf img
 
 readInitialConfig :: String -> IO Configuration
 readInitialConfig pngPath = do
@@ -80,41 +85,32 @@ readInitialConfig pngPath = do
 solveWith :: (Double,Double) -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
 solveWith (magic1,magic2) img = do
   let tree = QuadTree.create4 magic1 magic2 img
-  let code = MergeOpt.optimize img $ QuadTree.encode (PixelRGBA8 255 255 255 255) tree "0"
+  let code = MergeOpt.optimize img $ QuadTree.encode2 (PixelRGBA8 255 255 255 255) tree "0"
   let canvasSize = imageWidth img * imageHeight img
   let cost = sum (map (moveCost canvasSize) code)
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
-  {-
-  putStrLn ("  maxError " ++ show maxError ++ ": cost=" ++ show cost
-            ++ ", similarity=" ++ show siml
-            ++ ", total=" ++ show (cost + siml))  -}
   return (cost + siml, tree)
 
-optimize :: String -> Image PixelRGBA8 -> IO (Int, QuadTree.QuadTree)
-optimize path img = do
-    -- diffLimit <- replicateM 200 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
-    -- treeScale <- replicateM 200 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
-    diffLimit <- replicateM 50 (uniformRM (1000 :: Double, 17000 :: Double) globalStdGen)
-    treeScale <- replicateM 50 (uniformRM (4 :: Double, 14 :: Double) globalStdGen)
+optimize :: Image PixelRGBA8 -> IO (Int, (Double, Double), QuadTree.QuadTree)
+optimize img = do
+    -- observed: 3383 - 18105
+    diffLimit <- replicateM 50 (uniformRM (2000 :: Double, 21000 :: Double) globalStdGen)
+    -- observed: 5.99 - 21.77
+    treeScale <- replicateM 50 (uniformRM (5 :: Double, 30 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) (zip diffLimit treeScale)
-    let (score, err, tree) = minimum res
-    -- putStrLn (path ++ ": magic=" ++ show err ++ ", score=" ++ show score)
-    return (score, tree)
+    return (minimum res)
 
-
-writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO Int
+writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO (Int, (Double, Double))
 writeSolution path initialConf img = do
   let canvasSize = imageWidth img * imageHeight img
-  let (blocks', code1, id1) = reduceBlocksToOne (imageWidth img) (imageHeight img) (blocks initialConf)
-  when (not (null code1)) $
-    putStrLn (show (problemId path) ++ ": merge to 1 cost=" ++ show (sum (map (moveCost canvasSize) code1))) 
-  (_, tree) <- Main.optimize path img
-  let code = code1 ++ MergeOpt.optimize img (QuadTree.encode (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
+  let (_, code1, id1) = reduceBlocksToOne (imageWidth img) (imageHeight img) (blocks initialConf)
+  (_, magic, tree) <- Main.optimize img
+  let code = code1 ++ MergeOpt.optimize img (QuadTree.encode2 (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
   let img' = QuadTree.createImage (imageWidth img) (imageHeight img) tree
-  writePng (path ++ ".out.png") img'
+  writePng (take (length path - 3) path ++ "out.png") img'
   let cost = sum (map (moveCost canvasSize) code)
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
   putStrLn (path ++ ": cost=" ++ show cost ++ ", similarity=" ++ show siml ++ ", score=" ++ show (cost + siml))
-  return (cost + siml)
+  return (cost + siml, magic)

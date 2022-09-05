@@ -1,4 +1,4 @@
-module ImageUtils (getPixel, pixelDistance, averageColor, averageColor',
+module ImageUtils (pixelDistance, averageColor, averageColor',
                    totalError, totalError', totalError'',
                    similarity) where
 
@@ -6,9 +6,6 @@ import Codec.Picture
 import Data.Word
 
 import Types
-
-getPixel :: Image PixelRGBA8 -> Int -> Int -> PixelRGBA8
-getPixel img x y = pixelAt img x (imageHeight img - (y + 1))
 
 pixelDistance :: PixelRGBA8 -> PixelRGBA8 -> Double
 pixelDistance (PixelRGBA8 r1 g1 b1 a1) (PixelRGBA8 r2 g2 b2 a2) =

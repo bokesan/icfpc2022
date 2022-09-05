@@ -6,7 +6,7 @@ import ImageUtils
 import Types
 
 optimize :: Image PixelRGBA8 -> [Move] -> [Move]
-optimize img moves = go (maxMajorBlockNumber moves + 1) moves
+optimize img moves = moves -- go (maxMajorBlockNumber moves + 1) moves
   where
     go _   [] = []
     go blk ms@(m1:rest) = case opt2Colors img blk ms of

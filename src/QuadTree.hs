@@ -1,6 +1,8 @@
-module QuadTree (QuadTree, create4, encode, cost, createImage) where
+module QuadTree (QuadTree, create4, encode, encode2, cost, createImage) where
 
 import Codec.Picture
+import Data.List (maximumBy)
+import qualified Data.Map as Map
 
 import ImageUtils
 import Types
@@ -20,19 +22,59 @@ data Split = None
 
 encode :: RGBA -> QuadTree -> BlockId -> [Move]
 encode topColor node id1 =
-                  let blk = Block id1 (shape node) in
+                  let blk = Block id1 (shape node)
+                      color = nodeColor node in
+                  ( if color == topColor then []
+                     else [ Color blk color ] ) ++
                   case subNodes node of
-                    None | nodeColor node == topColor -> []
-                         | otherwise -> [ Color blk (nodeColor node) ]
+                    None -> []
                     V a b -> LineCut blk Vertical (nodeX0 b)
-                             : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
+                             : encode color a (id1 ++ ".0") ++ encode color b (id1 ++ ".1")
                     H a b -> LineCut blk Horizontal (nodeY0 b)
-                             : encode topColor a (id1 ++ ".0") ++ encode topColor b (id1 ++ ".1")
+                             : encode color a (id1 ++ ".0") ++ encode color b (id1 ++ ".1")
                     Quad a b c d -> PointCut blk (nodeX0 c) (nodeY0 c)
-                                     : encode topColor a (id1 ++ ".0")
-                                     ++ encode topColor b (id1 ++ ".1")
-                                     ++ encode topColor c (id1 ++ ".2")
-                                     ++ encode topColor d (id1 ++ ".3")
+                                     : encode color a (id1 ++ ".0")
+                                     ++ encode color b (id1 ++ ".1")
+                                     ++ encode color c (id1 ++ ".2")
+                                     ++ encode color d (id1 ++ ".3")
+
+encode2 :: RGBA -> QuadTree -> BlockId -> [Move]
+encode2 topColor node id1 =
+                  let blk = Block id1 (shape node)
+                      color = mostCommonColor node in
+                  ( if color == topColor then []
+                     else [ Color blk color ] ) ++
+                  case subNodes node of
+                    None -> []
+                    V a b -> LineCut blk Vertical (nodeX0 b)
+                             : encode color a (id1 ++ ".0") ++ encode color b (id1 ++ ".1")
+                    H a b -> LineCut blk Horizontal (nodeY0 b)
+                             : encode color a (id1 ++ ".0") ++ encode color b (id1 ++ ".1")
+                    Quad a b c d -> PointCut blk (nodeX0 c) (nodeY0 c)
+                                     : encode color a (id1 ++ ".0")
+                                     ++ encode color b (id1 ++ ".1")
+                                     ++ encode color c (id1 ++ ".2")
+                                     ++ encode color d (id1 ++ ".3")
+
+mostCommonColor :: QuadTree -> RGBA
+mostCommonColor tree = case Map.toList (go Map.empty tree) of
+                         [] -> nodeColor tree
+                         xs -> fst (maximumBy compareTupleRightToLeft xs)
+  where
+    go m node = case subNodes node of
+                  None -> Map.insertWith (+) (nodeColor node) (1::Int) m
+                  V a b -> let m' = go m a in go m' b
+                  H a b -> let m' = go m a in go m' b
+                  Quad a b c d -> let m1 = go m a
+                                      m2 = go m1 b
+                                      m3 = go m2 c
+                                  in go m3 d
+
+compareTupleRightToLeft :: (Ord a, Ord b) => (a,b) -> (a,b) -> Ordering
+compareTupleRightToLeft (a1,b1) (a2,b2) =
+  case compare b1 b2 of
+    EQ -> compare a1 a2
+    r  -> r
 
 nodeX0, nodeY0 :: QuadTree -> Int
 nodeX0 node = case shape node of Rectangle x0 _ _ _ -> x0

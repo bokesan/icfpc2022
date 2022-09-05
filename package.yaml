@@ -21,8 +21,8 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - JuicyPixels
-- random
 - aeson
+- containers
 
 ghc-options:
 - -Wall
@@ -50,6 +50,7 @@ executables:
     - icfpc2022
     - monad-parallel
     - directory
+    - random
 
 tests:
   icfpc2022-test:
