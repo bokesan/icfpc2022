@@ -1,5 +1,6 @@
 module ImageUtils (getPixel, pixelDistance, averageColor, averageColor',
-                   totalError, totalError', totalError'') where
+                   totalError, totalError', totalError'',
+                   similarity) where
 
 import Codec.Picture
 import Data.Word
@@ -71,3 +72,17 @@ rowErrors color img y x0 x1 = go baseIndex
     dat = imageData img
     go i s | i == endIndex = s
            | otherwise     = go (i + 4) (s + pixelDistance color (unsafePixelAt dat i))
+
+
+similarity :: Image PixelRGBA8 -> Image PixelRGBA8 -> Int
+similarity a b = if w1 /= w2 || h1 /= h2
+                   then error "invalid result dimesions"
+                   else go 0 0 0.0
+   where
+      w1 = imageWidth a
+      w2 = imageWidth b
+      h1 = imageHeight a
+      h2 = imageHeight b
+      go x y diff | y == h1 = roundJS (diff * 0.005)
+                  | x == w1 = go 0 (y + 1) diff
+                  | otherwise = go (x + 1) y (diff + pixelDistance (pixelAt a x y) (pixelAt b x y))
