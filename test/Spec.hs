@@ -33,11 +33,17 @@ qcProps = testGroup "(checked by QuickCheck)"
   ]
 
 unitTests = testGroup "Unit tests"
-  [
-    testCase "mixColors" $
+  [ testCase "problemId with path"    $ problemId "/path/to/35.png" @?= 35
+  , testCase "problemId without path" $ problemId "36.initial.json" @?= 36
+  , testCase "problemId at root"      $ problemId "/17.out.png"     @?= 17
+  , testCase "mixColors" $
       mixColors (PixelRGBA8 20 40 60 80) (PixelRGBA8 10 20 30 6) @?= (PixelRGBA8 15 30 45 43)
   , testCase "parse blockId" $
       parseBlockId "12.34.56" @?= [12, 34, 56]
+  , testCase "round to even 1" $ round 2.5 @?= 2
+  , testCase "round to even 2" $ round 3.5 @?= 4
+  , testCase "roundJS 1" $ roundJS 2.5 @?= 3
+  , testCase "roundJS 2" $ roundJS 3.5 @?= 4
   , testCase "splitV" $
       splitV (Rectangle 0 0 10 10) 5 @?= (Rectangle 0 0 5 10, Rectangle 5 0 10 10)
   , testCase "splitH" $

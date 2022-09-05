@@ -1,14 +1,22 @@
 module Types (
-          Block(..), BlockId, parseBlockId, Shape
+          problemId
+        , Block(..), BlockId, parseBlockId, Shape
         , RGBA, mixColors
         , Orientation(..)
         , Move(..)
         , moveCost
         , Rectangle(..), contains, size, merge, splitV, splitH, splitP
+        , roundJS
   ) where
 
 import Codec.Picture
 import Data.Word
+
+problemId :: String -> Int
+problemId filePath = let (tl',_) = break ('/'==) (reverse filePath)
+                         tl = reverse tl'
+                         (n, _) = break ('.'==) tl
+                     in read n
 
 type BlockId = String
 
@@ -115,4 +123,13 @@ blockSize :: Block -> Int
 blockSize (Block _ s) = size s
 
 cost :: Int -> Int -> Int -> Int
-cost factor canvasSize blockSize = round (fromIntegral factor * fromIntegral canvasSize / fromIntegral blockSize)
+cost factor canvasSize blockSize = roundJS (fromIntegral factor * fromIntegral canvasSize / fromIntegral blockSize)
+
+roundJS :: Double -> Int
+roundJS x = let f = floor x
+                c = ceiling x
+                df = x - fromIntegral f
+                dc = fromIntegral c - x
+             in
+                if df < dc then f else c
+
