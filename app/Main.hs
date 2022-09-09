@@ -8,12 +8,13 @@ import Data.List (intersperse)
 import System.Environment
 import System.Directory
 import System.Random.Stateful
+import Text.Printf
 
 import Types
 import qualified QuadTree
 import qualified P1Solver
 import BlockSwap
-import ImageUtils (similarity)
+import ImageUtils (similarity, componentHistogram)
 import Configuration
 import qualified MergeOpt
 
@@ -21,6 +22,7 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             ("-similarity" : args') -> showSimilarity args'
+            ("-info" : args') -> mapM_ showInfo args'
             ("-p1" : args') ->
                  do scores <- PAR.mapM solveP1 args'
                     putStrLn ("Total score: " ++ show (sum scores))
@@ -35,8 +37,12 @@ main = do args <- getArgs
                     putStrLn ("Magic2 " ++ showRange (map snd magic))
 
 showRange :: [Double] -> String
-showRange xs = show (minimum xs) ++ " - " ++ show (maximum xs)
+showRange xs = printf "%.2f - %.2f" (minimum xs) (maximum xs)
 
+showInfo :: String -> IO ()
+showInfo path = do img <- readImage' path
+                   let alphaHist = componentHistogram pixelOpacity img
+                   putStrLn (path ++ ": alpha histogram = " ++ show alphaHist)
 
 showSimilarity :: [String] -> IO ()
 showSimilarity [file1, file2] = do
@@ -112,9 +118,10 @@ solveWith (magic1,magic2) img = do
 optimize :: Image PixelRGBA8 -> IO (Int, (Double, Double), QuadTree.QuadTree)
 optimize img = do
     -- observed: 3383 - 18105
-    diffLimit <- replicateM 50 (uniformRM (2000 :: Double, 25000 :: Double) globalStdGen)
+    -- observed new use: 
+    diffLimit <- replicateM 20 (uniformRM (1.8 :: Double, 5 :: Double) globalStdGen)
     -- observed: 5.99 - 99
-    treeScale <- replicateM 50 (uniformRM (4.5 :: Double, 100 :: Double) globalStdGen)
+    treeScale <- replicateM 20 (uniformRM (3.5 :: Double, 12 :: Double) globalStdGen)
     res <- mapM (\m -> do (s,t) <- solveWith m img; return (s,m,t)) (zip diffLimit treeScale)
     return (minimum res)
 
@@ -122,7 +129,7 @@ writeSolution :: String -> Configuration -> Image PixelRGBA8 -> IO (Int, (Double
 writeSolution path initialConf img = do
   let canvasSize = imageWidth img * imageHeight img
   let (_, code1, id1) = reduceBlocksToOne (imageWidth img) (imageHeight img) (blocks initialConf)
-  (_, magic, tree) <- Main.optimize img
+  (_, magic@(magic1,magic2), tree) <- Main.optimize img
   let code = code1 ++ MergeOpt.optimize img (QuadTree.encode2 (PixelRGBA8 255 255 255 255) tree (show (id1 - 1)))
   let prog = concat $ intersperse "\n" (map show code)
   writeFile (path ++ ".txt") prog
@@ -130,6 +137,8 @@ writeSolution path initialConf img = do
   writePng (take (length path - 3) path ++ "out.png") img'
   let cost = sum (map (moveCost canvasSize) code)
   let siml = similarity img (QuadTree.createImage (imageWidth img) (imageHeight img) tree)
-  putStrLn (path ++ ": cost=" ++ show cost ++ ", similarity=" ++ show siml ++ ", score=" ++ show (cost + siml))
+  putStrLn $ printf "%d: magic (%.2f, %.2f), cost=%d, similarity=%d, score=%d"
+                    (problemId path)
+                    magic1 magic2 cost siml (cost + siml)
   return (cost + siml, magic)
 

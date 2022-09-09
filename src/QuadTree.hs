@@ -262,12 +262,12 @@ create4 magic1 magic2 img = snd (go (Rectangle 0 0 (imageWidth img) (imageHeight
     canvasSize = fromIntegral (imageWidth img * imageHeight img)
     go :: Rectangle -> (Double, QuadTree)
     go sh@(Rectangle x0 y0 x1 y1) =
-        let average = averageColor' img sh
+        let average = bestColor' img sh -- bestColor'
             siml = 0.005 * totalError' average img sh
         in (siml, Node { nodeColor = average, shape = sh,
                          subNodes = bestOf ( 
-                                             (if siml > magic1 then [] else [(5 * siml, None)])
-                                             ++ map (mapFst (magic2 *)) (divide sh average siml)
+                                             (5 * siml, None)
+                                             : map (mapFst (magic2 *)) (divide sh average (magic1 * siml))
                                            )
                         } )
     bestOf :: [(Double, Split)] -> Split

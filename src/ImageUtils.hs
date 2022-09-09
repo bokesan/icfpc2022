@@ -1,9 +1,13 @@
 module ImageUtils (getPixel, pixelDistance, averageColor, averageColor',
                    totalError, totalError', totalError'',
-                   similarity) where
+                   similarity, componentHistogram, bestColor, bestColor') where
 
 import Codec.Picture
+import Codec.Picture.Types
+import Data.List (maximumBy)
+import Data.Bits
 import Data.Word
+import qualified Data.IntMap.Strict as IM
 
 import Types
 
@@ -16,6 +20,12 @@ pixelDistance (PixelRGBA8 r1 g1 b1 a1) (PixelRGBA8 r2 g2 b2 a2) =
   where
     sqd :: Word8 -> Word8 -> Double
     sqd m n = let v = fromIntegral m - fromIntegral n in v * v
+
+colorToInt :: PixelRGBA8 -> Int
+colorToInt (PixelRGBA8 r g b _) = shiftL (fromIntegral r) 16 + shiftL (fromIntegral g) 8 + fromIntegral b
+
+intToColor :: Int -> PixelRGBA8
+intToColor n = PixelRGBA8 (fromIntegral (shiftR n 16)) (fromIntegral (shiftR n 8)) (fromIntegral n) 255
 
 data ChannelSums = Sums !Word32 !Word32 !Word32 !Word32
 
@@ -33,6 +43,23 @@ rowChannelSums img y x0 x1 sums = go baseIndex sums
     dat = imageData img
     go i s | i == endIndex = s
            | otherwise     = go (i + 4) (addPixel (unsafePixelAt dat i) s)
+
+-- Total score: 1752282
+-- Magic1 3246.4270215293704 - 17429.476346333653
+-- Magic2 5.815084943134368 - 87.20739974919016
+bestColor' :: Image PixelRGBA8 -> Rectangle -> PixelRGBA8
+bestColor' image (Rectangle x0 y0 x1 y1) = bestColor image x0 y0 x1 y1
+
+bestColor :: Image PixelRGBA8 -> Int -> Int -> Int -> Int -> PixelRGBA8
+bestColor image x0 y0 x1 y1 = intToColor (fst (maximumBy (\(_,a) (_,b) -> compare a b) (IM.toList histo)))
+  where
+    -- TODO: take best from existing
+    histo = go IM.empty x0 y0
+    go m x y | y == y1 = m
+             | x == x1 = go m x0 (y + 1)
+             | otherwise = let c = getPixel image x y
+                               m' = IM.insertWith (+) (colorToInt c) 1 m
+                           in go m' (x + 1) y
 
 averageColor' :: Image PixelRGBA8 -> Rectangle -> PixelRGBA8
 averageColor' image (Rectangle x0 y0 x1 y1) = averageColor image x0 y0 x1 y1
@@ -86,3 +113,9 @@ similarity a b = if w1 /= w2 || h1 /= h2
       go x y diff | y == h1 = roundJS (diff * 0.005)
                   | x == w1 = go 0 (y + 1) diff
                   | otherwise = go (x + 1) y (diff + pixelDistance (pixelAt a x y) (pixelAt b x y))
+
+componentHistogram :: (PixelRGBA8 -> Word8) -> Image PixelRGBA8 -> [(Word8, Int)]
+componentHistogram component img = [(fromIntegral k, v) | (k,v) <- IM.toList histo]
+  where
+    histo = pixelFold accum IM.empty img
+    accum m _ _ v = IM.insertWith (+) (fromIntegral (component v)) 1 m
